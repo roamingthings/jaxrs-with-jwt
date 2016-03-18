@@ -1,12 +1,12 @@
 package com.abhirockzz.jaxrs.jwt.filters;
 
+import com.abhirockzz.jaxrs.jwt.JWTokenUtility;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.container.ContainerResponseFilter;
-
 
 public class JWTResponseFilter implements ContainerResponseFilter {
 
@@ -22,7 +22,8 @@ public class JWTResponseFilter implements ContainerResponseFilter {
         }
 
         List<Object> jwt = new ArrayList<Object>();
-        jwt.add(requestContext.getHeaderString("Authorization").split(" ")[1]);
+        jwt.add(JWTokenUtility.buildJWT(requestContext.getSecurityContext().getUserPrincipal().getName()));
+        // jwt.add(requestContext.getHeaderString("Authorization").split(" ")[1]);
         responseContext.getHeaders().put("jwt", jwt);
         System.out.println("Added JWT to response header 'jwt'");
 
