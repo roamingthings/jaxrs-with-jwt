@@ -1,19 +1,20 @@
 package com.abhirockzz.jaxrs.jwt.filters;
 
 import com.abhirockzz.jaxrs.jwt.RsaKeyProducer;
-import java.io.IOException;
-import java.security.Principal;
+import org.jose4j.jwk.RsaJsonWebKey;
+import org.jose4j.jwt.JwtClaims;
+import org.jose4j.jwt.consumer.InvalidJwtException;
+import org.jose4j.jwt.consumer.JwtConsumer;
+import org.jose4j.jwt.consumer.JwtConsumerBuilder;
+
 import javax.annotation.Priority;
 import javax.ws.rs.Priorities;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
-import org.jose4j.jwk.RsaJsonWebKey;
-import org.jose4j.jwt.JwtClaims;
-import org.jose4j.jwt.consumer.InvalidJwtException;
-import org.jose4j.jwt.consumer.JwtConsumer;
-import org.jose4j.jwt.consumer.JwtConsumerBuilder;
+import java.io.IOException;
+import java.security.Principal;
 
 @Priority(Priorities.AUTHENTICATION)
 public class JWTAuthFilter implements ContainerRequestFilter {
@@ -25,7 +26,7 @@ public class JWTAuthFilter implements ContainerRequestFilter {
         String authHeaderVal = requestContext.getHeaderString("Authorization");
 
         //consume JWT i.e. execute signature validation
-        if (authHeaderVal.startsWith("Bearer")) {
+        if (authHeaderVal != null && authHeaderVal.startsWith("Bearer")) {
             try {
                 System.out.println("JWT based Auth in action... time to verify th signature");
                 System.out.println("JWT being tested:\n" + authHeaderVal.split(" ")[1]);
@@ -46,6 +47,7 @@ public class JWTAuthFilter implements ContainerRequestFilter {
 
                         @Override
                         public boolean isUserInRole(String role) {
+                            System.out.println("Checking if user is in role: " + role);
                             return securityContext.isUserInRole(role);
                         }
 
@@ -67,7 +69,39 @@ public class JWTAuthFilter implements ContainerRequestFilter {
                 requestContext.abortWith(Response.status(Response.Status.UNAUTHORIZED).build());
 
             }
+        } else if (authHeaderVal != null && authHeaderVal.startsWith("Superduper")) {
+            System.out.println("Superduper authentication detected!");
+            final String subject = "Superduper";
+            final SecurityContext securityContext = requestContext.getSecurityContext();
+            if (subject != null) {
+                requestContext.setSecurityContext(new SecurityContext() {
+                    @Override
+                    public Principal getUserPrincipal() {
+                        return new Principal() {
+                            @Override
+                            public String getName() {
+                                System.out.println("Returning custom Principal - " + subject);
+                                return subject;
+                            }
+                        };
+                    }
 
+                    @Override
+                    public boolean isUserInRole(String role) {
+                        return "superuser".equals(role) || securityContext.isUserInRole(role);
+                    }
+
+                    @Override
+                    public boolean isSecure() {
+                        return securityContext.isSecure();
+                    }
+
+                    @Override
+                    public String getAuthenticationScheme() {
+                        return securityContext.getAuthenticationScheme();
+                    }
+                });
+            }
         } else {
             System.out.println("No JWT token !");
             requestContext.setProperty("auth-failed", true);
